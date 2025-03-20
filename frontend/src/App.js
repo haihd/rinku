@@ -16,7 +16,7 @@ function App() {
   const [form, setForm] = useState({ url: "", title: "", description: "" })
   const [urlError, setUrlError] = useState("")
 
-  const API_URL = process.env.BACKEND_API_URL
+  const API_URL = process.env.REACT_APP_API_BASE_URL
 
   useEffect(() => {
     fetchLinks()
