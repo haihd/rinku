@@ -1,7 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
-const axios = require('axios');
 require('dotenv').config(); // Load environment variables
 
 const app = express();
