@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:all": "concurrently \"npm start --prefix backend\" \"npm start --prefix frontend\""
+    "server": "node backend/server.js",
+    "start:all": "concurrently \"npm run server\" \"npm start --prefix frontend\""
   },
   "keywords": [],
   "author": "",
@@ -15,5 +16,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "pg": "^8.14.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

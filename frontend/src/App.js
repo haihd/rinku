@@ -9,38 +9,40 @@ function App() {
     fetchLinks();
   }, []);
 
+  const API_URL = "https://reimagined-space-xylophone-pqqrwx4pr5f6r95-5000.app.github.dev";
+
   const fetchLinks = async () => {
-    const response = await axios.get('http://localhost:5000/api/links');
+    const response = await axios.get(`${API_URL}/api/links`);
     setLinks(response.data);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post('http://localhost:5000/api/links', form);
+    await axios.post(`${API_URL}/api/links`, form);
     setForm({ title: '', url: '', description: '' });
     fetchLinks();
   };
 
   const handleDelete = async (id) => {
-    await axios.delete(`http://localhost:5000/api/links/${id}`);
+    await axios.delete(`${API_URL}/api/links/${id}`);
     fetchLinks();
   };
 
   return (
     <div>
-      <h1>Link Manager</h1>
+      <h1>rinku</h1>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Title"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-        />
         <input
           type="url"
           placeholder="URL"
           value={form.url}
           onChange={(e) => setForm({ ...form, url: e.target.value })}
+        />
+        <input
+          type="text"
+          placeholder="Title"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
         <textarea
           placeholder="Description"
