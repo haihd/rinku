@@ -16,7 +16,7 @@ function App() {
   const [form, setForm] = useState({ url: "", title: "", description: "" })
   const [urlError, setUrlError] = useState("")
 
-  const API_URL = "https://reimagined-space-xylophone-pqqrwx4pr5f6r95-5000.app.github.dev"
+  const API_URL = process.env.BACKEND_API_URL
 
   useEffect(() => {
     fetchLinks()
