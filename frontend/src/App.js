@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react"
 import axios from "axios"
-import { PlusCircle, Trash2 } from "lucide-react"
+import { PlusCircle, Trash2, Share2, ExternalLink } from "lucide-react"
+import { LoadingSpinner, LoadingOverlay } from "./components/ui/loading"
 import { ThemeToggle } from "./components/ui/theme-toggle"
 import { Button } from "./components/ui/button"
 import { Input } from "./components/ui/input"
@@ -10,11 +11,16 @@ import { Label } from "./components/ui/label"
 import { Textarea } from "./components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card"
+import { Toast } from "./components/ui/toast"
 
 function App() {
   const [links, setLinks] = useState([])
   const [form, setForm] = useState({ url: "", title: "", description: "" })
   const [urlError, setUrlError] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(null)
+  const [showToast, setShowToast] = useState(false)
 
   const API_URL = process.env.REACT_APP_API_BASE_URL
 
@@ -26,8 +32,14 @@ function App() {
   }, [])
 
   const fetchLinks = async () => {
-    const response = await axios.get(`${API_URL}/api/links`)
-    setLinks(response.data)
+    try {
+      const response = await axios.get(`${API_URL}/api/links`)
+      setLinks(response.data)
+    } catch (error) {
+      console.error('Failed to fetch links:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const validateUrl = (url) => {
@@ -37,6 +49,19 @@ function App() {
     } catch (e) {
       return false
     }
+  }
+
+  const handleCopyUrl = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setShowToast(true)
+    } catch (error) {
+      console.error('Failed to copy URL:', error)
+    }
+  }
+
+  const handleOpenLink = (url) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleSubmit = async (e) => {
@@ -52,27 +77,41 @@ function App() {
       return
     }
 
-    await axios.post(`${API_URL}/api/links`, form)
-    setForm({ url: "", title: "", description: "" })
-    setUrlError("")
-    fetchLinks()
+    setIsSubmitting(true)
+    try {
+      await axios.post(`${API_URL}/api/links`, form)
+      setForm({ url: "", title: "", description: "" })
+      setUrlError("")
+      await fetchLinks()
+    } catch (error) {
+      console.error('Failed to add link:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDelete = async (id) => {
-    await axios.delete(`${API_URL}/api/links/${id}`)
-    fetchLinks()
+    setIsDeleting(id)
+    try {
+      await axios.delete(`${API_URL}/api/links/${id}`)
+      await fetchLinks()
+    } catch (error) {
+      console.error('Failed to delete link:', error)
+    } finally {
+      setIsDeleting(null)
+    }
   }
 
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Rinku</h1>
+        <h1 className="text-3xl font-bold">🔗rinku</h1>
         <ThemeToggle />
       </div>
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Add New Bookmark</CardTitle>
+          <CardTitle>Add New Link</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -98,7 +137,7 @@ function App() {
               <Input
                 id="title"
                 name="title"
-                placeholder="Website Title"
+                placeholder="Link Title"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
@@ -116,9 +155,13 @@ function App() {
               />
             </div>
 
-            <Button type="submit" className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Bookmark
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <LoadingSpinner className="mr-2" />
+              ) : (
+                <PlusCircle className="mr-2 h-4 w-4" />
+              )}
+              {isSubmitting ? "Adding..." : "Add Link"}
             </Button>
           </form>
         </CardContent>
@@ -126,12 +169,14 @@ function App() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Bookmarks</CardTitle>
+          <CardTitle>Your Links</CardTitle>
         </CardHeader>
         <CardContent>
-          {links.length === 0 ? (
+          {isLoading ? (
+            <LoadingSpinner className="py-8" />
+          ) : links.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
-              No bookmarks added yet. Add your first bookmark above.
+              No links added yet. Add your first link above.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -141,7 +186,7 @@ function App() {
                     <TableHead>Title</TableHead>
                     <TableHead className="hidden md:table-cell">URL</TableHead>
                     <TableHead className="hidden md:table-cell">Description</TableHead>
-                    <TableHead className="w-[80px]">Action</TableHead>
+                    <TableHead className="w-[160px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -169,10 +214,37 @@ function App() {
                         <div className="truncate max-w-[300px]">{link.description || "No description"}</div>
                       </TableCell>
                       <TableCell>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(link.id)}>
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleOpenLink(link.url)}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">Open</span>
+                          </Button>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={() => handleCopyUrl(link.url)}
+                          >
+                            <Share2 className="h-4 w-4" />
+                            <span className="sr-only">Share</span>
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => handleDelete(link.id)}
+                            disabled={isDeleting === link.id}
+                          >
+                            {isDeleting === link.id ? (
+                              <LoadingSpinner className="h-4 w-4" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -182,6 +254,12 @@ function App() {
           )}
         </CardContent>
       </Card>
+      {showToast && (
+        <Toast 
+          message="URL copied to clipboard!" 
+          onClose={() => setShowToast(false)} 
+        />
+      )}
     </div>
   )
 }
