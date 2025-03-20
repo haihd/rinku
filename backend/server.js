@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const axios = require('axios');
 require('dotenv').config(); // Load environment variables
 
 const app = express();
@@ -61,6 +62,34 @@ app.delete('/api/links/:id', async (req, res) => {
   const { id } = req.params;
   await pool.query('DELETE FROM links WHERE id = $1', [id]);
   res.sendStatus(204);
+});
+
+// Fetch metadata for a URL
+app.get('/api/metadata', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL parameter is required' });
+  }
+
+  try {
+    const FirecrawlApp = require('@mendable/firecrawl-js').default;
+    const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
+
+    const scrapeResult = await app.scrapeUrl(url, { formats: ['markdown', 'html'] });
+
+    if (!scrapeResult.success) {
+      throw new Error(`Failed to scrape: ${scrapeResult.error}`);
+    }
+
+    res.json(scrapeResult.metadata);
+  } catch (error) {
+    console.error('Failed to fetch metadata:', error);
+    res.status(500).json({
+      error: 'Failed to fetch metadata',
+      details: error.message,
+    });
+  }
 });
 
 app.listen(5000, () => console.log('Server running on port 5000'));

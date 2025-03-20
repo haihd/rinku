@@ -20,7 +20,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(null)
-  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
 
   const API_URL = process.env.REACT_APP_API_BASE_URL
 
@@ -42,6 +43,24 @@ function App() {
     }
   }
 
+  const fetchMetadata = async (url) => {
+    setIsLoadingMetadata(true)
+    try {
+      const response = await axios.get(`${API_URL}/api/metadata?url=${encodeURIComponent(url)}`)
+      const { title, description } = response.data
+      setForm(prev => ({
+        ...prev,
+        title: title || prev.title,
+        description: description || prev.description
+      }))
+    } catch (error) {
+      console.error('Failed to fetch metadata:', error)
+      setToastMessage("Failed to fetch metadata. Please enter title and description manually.")
+    } finally {
+      setIsLoadingMetadata(false)
+    }
+  }
+
   const validateUrl = (url) => {
     try {
       new URL(url)
@@ -54,7 +73,7 @@ function App() {
   const handleCopyUrl = async (url) => {
     try {
       await navigator.clipboard.writeText(url)
-      setShowToast(true)
+      setToastMessage("URL copied to clipboard!")
     } catch (error) {
       console.error('Failed to copy URL:', error)
     }
@@ -124,11 +143,22 @@ function App() {
                 placeholder="https://example.com"
                 value={form.url}
                 onChange={(e) => {
-                  setForm({ ...form, url: e.target.value })
+                  const url = e.target.value
+                  setForm({ ...form, url })
                   setUrlError("")
+                  
+                  if (validateUrl(url)) {
+                    fetchMetadata(url)
+                  }
                 }}
                 className={urlError ? "border-red-500" : ""}
               />
+              {isLoadingMetadata && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <LoadingSpinner className="h-4 w-4" />
+                  <span>Fetching metadata...</span>
+                </div>
+              )}
               {urlError && <p className="text-sm text-red-500">{urlError}</p>}
             </div>
 
@@ -254,10 +284,10 @@ function App() {
           )}
         </CardContent>
       </Card>
-      {showToast && (
+      {toastMessage && (
         <Toast 
-          message="URL copied to clipboard!" 
-          onClose={() => setShowToast(false)} 
+          message={toastMessage} 
+          onClose={() => setToastMessage("")} 
         />
       )}
     </div>
